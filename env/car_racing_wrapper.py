@@ -1,8 +1,7 @@
 import gym
 import numpy as np
 
-
-class Env():
+class Env:
     """
     Environment wrapper for CarRacing
     """
@@ -33,7 +32,7 @@ class Env():
             if die:
                 reward += 100
             # green penalty
-            if np.mean(img_rgb[:, :, 1]) > 185.0: # 185
+            if np.mean(img_rgb[:, :, 1]) > 185.0:  # 185
                 reward -= 5
                 flag = True
                 # print("跑到绿色里了")
@@ -48,6 +47,7 @@ class Env():
         assert len(self.stack) == self.img_stack
         if flag: print(total_reward)
         return np.array(self.stack), total_reward, done, die
+
     def render(self, *arg):
         self.env.render(*arg)
 
