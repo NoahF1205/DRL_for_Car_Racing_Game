@@ -1,17 +1,11 @@
-import numpy as np
-import gym
-import torch
+import torch.nn as nn
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Beta
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 from env.car_racing_wrapper import Env
-import time
 from rl_agents.rl_utils import *
-
-
-
 
 
 class PolicyNet(nn.Module):

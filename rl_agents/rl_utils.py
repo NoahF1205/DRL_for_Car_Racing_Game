@@ -1,11 +1,9 @@
-from tqdm import tqdm
-import numpy as np
-import torch
 import collections
 import random
 import time
-import os
-import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from tqdm import tqdm
 
 
 class ReplayBuffer:
@@ -62,7 +60,6 @@ def transfer_action_shape(action_index):
 
     # Make sure action is a list or array of floats
     return action
-
 
 
 def train_on_policy_agent(env, agent, num_episodes):
@@ -161,7 +158,6 @@ def compute_advantage(gamma, lmbda, td_delta):
         advantage_list.append(advantage)
     advantage_list.reverse()
     return torch.tensor(advantage_list, dtype=torch.float)
-
 
 
 def train_on_policy_agent_on(env, agent, num_episodes):

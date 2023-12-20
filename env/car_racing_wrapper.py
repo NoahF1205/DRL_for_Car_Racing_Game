@@ -1,6 +1,7 @@
 import gym
 import numpy as np
 
+
 class Env:
     """
     Environment wrapper for CarRacing
@@ -14,6 +15,7 @@ class Env:
         self.reward_threshold = self.env.spec.reward_threshold
 
     def reset(self):
+
         self.counter = 0
         self.av_r = self.reward_memory()
 
