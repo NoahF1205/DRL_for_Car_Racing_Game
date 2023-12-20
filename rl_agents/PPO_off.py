@@ -1,10 +1,17 @@
+import numpy as np
+import gym
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Beta
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 from env.car_racing_wrapper import Env
+import time
 from rl_agents.rl_utils import *
+
+
+
 
 
 class PolicyNet(nn.Module):
@@ -49,7 +56,6 @@ class PolicyNet(nn.Module):
         beta = self.beta_head(x) + 1
         return alpha, beta
 
-
 class ValueNet(nn.Module):
     """
     Actor-Critic Network for PPO
@@ -72,9 +78,6 @@ class ValueNet(nn.Module):
             nn.ReLU(),  # activation
         )  # output shape (256, 1, 1)
         self.v = nn.Sequential(nn.Linear(256, hidden_dim), nn.ReLU(), nn.Linear(100, 1))
-        self.fc = nn.Sequential(nn.Linear(256, hidden_dim), nn.ReLU())
-        self.alpha_head = nn.Sequential(nn.Linear(hidden_dim, 3), nn.Softplus())
-        self.beta_head = nn.Sequential(nn.Linear(hidden_dim, 3), nn.Softplus())
         self.apply(self._weights_init)
 
     @staticmethod
@@ -95,9 +98,7 @@ class PPO_off():
     """
     Agent for training
     """
-
-    def __init__(self, input_channel, hidden_dim, gamma, eps, ppo_epoch, buffer_capacity, batch_size, actor_lr,
-                 critic_lr):
+    def __init__(self, input_channel, hidden_dim, gamma, eps, ppo_epoch, buffer_capacity, batch_size, actor_lr, critic_lr):
         self.max_grad_norm = 0.5
         self.clip_param = eps
         self.training_step = 0
@@ -114,13 +115,9 @@ class PPO_off():
              ('r', np.float64), ('s_', np.float64, (input_channel, 96, 96))])
         self.buffer = np.empty(self.buffer_capacity, dtype=self.transition)
         self.counter = 0
-        self.optimizer = optim.Adam(self.actor_net.parameters(), lr=actor_lr)
-        self.optimizer = optim.Adam(self.critic_net.parameters(), lr=critic_lr)
+        self.actor_optimizer = optim.Adam(self.actor_net.parameters(), lr=actor_lr)
+        self.critic_optimizer = optim.Adam(self.critic_net.parameters(), lr=critic_lr)
         self.gamma = gamma
-
-    def load_weights(self, actor_path, critic_path):
-        self.actor_net.load_state_dict(torch.load(actor_path))
-        self.critic_net.load_state_dict(torch.load(critic_path))
 
     def select_action(self, state):
         state = torch.from_numpy(state).double().to(self.device).unsqueeze(0)
@@ -156,6 +153,7 @@ class PPO_off():
             target_v = r + self.gamma * self.critic_net(s_)
             adv = target_v - self.critic_net(s)
 
+
         for _ in range(self.ppo_epoch):
             for index in BatchSampler(SubsetRandomSampler(range(self.buffer_capacity)), self.batch_size, False):
                 alpha, beta = self.actor_net(s[index])
@@ -166,10 +164,17 @@ class PPO_off():
                 surr2 = torch.clamp(ratio, 1.0 - self.clip_param, 1.0 + self.clip_param) * adv[index]
                 action_loss = -torch.min(surr1, surr2).mean()
                 value_loss = F.smooth_l1_loss(self.critic_net(s[index]), target_v[index])
-                loss = action_loss + 2. * value_loss
-                self.optimizer.zero_grad()
-                loss.backward()
-                self.optimizer.step()
+                self.actor_optimizer.zero_grad()
+                self.critic_optimizer.zero_grad()
+                action_loss.backward()
+                value_loss.backward()
+                self.actor_optimizer.step()
+                self.critic_optimizer.step()
+
+    def load_weights(self, actor_path, critic_path):
+        self.actor_net.load_state_dict(torch.load(actor_path))
+        self.critic_net.load_state_dict(torch.load(critic_path))
+
 
 
 def train_car_racing(agent, env, num_episodes):
@@ -197,10 +202,30 @@ def train_car_racing(agent, env, num_episodes):
     torch.save(agent.actor_net.state_dict(), './weights/PPO_off_actor_weights.pth')
     torch.save(agent.critic_net.state_dict(), './weights/PPO_off_critic_weights.pth')
 
-
-# Main training loop
+#Main training loop
 if __name__ == "__main__":
-    env = Env(action_repeat=8, img_stack=4, seed=0, render_mode=None)
-    agent = PPO_off(input_channel=4, hidden_dim=100, gamma=0.99, eps=0.1, ppo_epoch=10, buffer_capacity=200,
-                    batch_size=128, actor_lr=1e-3, critic_lr=1e-3)
-    train_off_policy_agent_off(agent, env, 3)
+    # env = Env(action_repeat=8, img_stack=4, seed=0, render_mode=None)
+    # agent = PPO_off(input_channel=4, hidden_dim=100, gamma=0.99, eps=0.1, ppo_epoch=10, buffer_capacity=200, batch_size=128, actor_lr=1e-3,
+    #               critic_lr=1e-3)
+    # train_off_policy_agent_off(agent, env, 3)
+    actor_lr = 1e-3
+    critic_lr = 1e-3
+    num_episodes = 100
+    hidden_dim = 100
+    gamma = 0.99
+    ppo_epoch = 10
+    eps = 0.1
+    buffer_capacity = 2000
+    batch_size = 128
+
+    env = Env(seed=0, action_repeat=8, img_stack=3, render_mode=None)
+    torch.manual_seed(0)
+
+    input_channels = 3
+
+    agent = PPO_off(input_channel=input_channels, hidden_dim=hidden_dim, gamma=gamma, eps=eps, ppo_epoch=ppo_epoch,
+                    buffer_capacity=buffer_capacity, batch_size=batch_size, actor_lr=actor_lr,
+                    critic_lr=critic_lr)
+    return_list, training_time = train_off_policy_agent_off(agent, env, num_episodes)
+
+

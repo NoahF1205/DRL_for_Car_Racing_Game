@@ -1,9 +1,11 @@
+from tqdm import tqdm
+import numpy as np
+import torch
 import collections
 import random
 import time
-import numpy as np
-import torch
-from tqdm import tqdm
+import os
+import matplotlib.pyplot as plt
 
 
 class ReplayBuffer:
@@ -60,6 +62,7 @@ def transfer_action_shape(action_index):
 
     # Make sure action is a list or array of floats
     return action
+
 
 
 def train_on_policy_agent(env, agent, num_episodes):
@@ -125,7 +128,6 @@ def train_off_policy_agent(env, agent, num_episodes, replay_buffer, minimal_size
                         transition_dict = {'states': b_s, 'actions': b_a, 'next_states': b_ns, 'rewards': b_r,
                                            'dones': b_d}
                         agent.update(transition_dict)
-                print(episode_return)
                 return_list.append(episode_return)
                 if (i_episode + 1) % 10 == 0:
                     pbar.set_postfix({'episode': '%d' % (num_episodes / 10 * i + i_episode + 1),
@@ -144,7 +146,7 @@ def play_game(env, agent, episodes=1):
         done = False
         while not done:
             env.render()
-            action = agent.take_action_greedy(state)
+            action = agent.take_action(state)
             next_state, reward, terminated, truncated = env.step(transfer_action_shape(action))
             done = terminated or truncated
     env.close()
@@ -159,6 +161,7 @@ def compute_advantage(gamma, lmbda, td_delta):
         advantage_list.append(advantage)
     advantage_list.reverse()
     return torch.tensor(advantage_list, dtype=torch.float)
+
 
 
 def train_on_policy_agent_on(env, agent, num_episodes):

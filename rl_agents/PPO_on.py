@@ -1,8 +1,13 @@
-import os
-import torch.nn as nn
+import torch
 import torch.nn.functional as F
+import torch.nn as nn
+import gym
+import numpy as np
+from torch.distributions import Beta
 import rl_agents.rl_utils as rl_utils
 from rl_agents.rl_utils import *
+from env.car_racing_wrapper import  Env
+import os
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -85,7 +90,6 @@ class ValueNet(nn.Module):
         x = x.view(x.size(0), -1)  # Flatten the output of conv layers
         return self.fc(x)
 
-
 class PPO_on:
     def __init__(self, input_channels, hidden_dim, action_dim, actor_lr, critic_lr, gamma, lmbda, ppo_epoch, eps):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -102,17 +106,16 @@ class PPO_on:
         self.lmbda = lmbda
         self.epochs = ppo_epoch  # 一条序列的数据用来训练轮数
         self.eps = eps  # PPO中截断范围的参数
-
     def take_action(self, state):
         state = torch.tensor(np.array([state]), dtype=torch.float).to(self.device)
         # Get the probability distribution over actions
         with torch.no_grad():
             probs = self.actor(state)
-            # print("probs", probs)
+            #print("probs", probs)
         # print(probs)
         action_dist = torch.distributions.Categorical(probs)
         action_index = action_dist.sample().item()  # This is an index, not the actual action
-        # print("action_index:", action_index)
+        #print("action_index:", action_index)
         return action_index
 
     def update(self, transition_dict):
@@ -157,8 +160,9 @@ class PPO_on:
             self.critic_optimizer.step()
 
     def load_weights(self, actor_path, critic_path):
-        self.actor.load_state_dict(torch.load(actor_path))
-        self.critic.load_state_dict(torch.load(critic_path))
+        self.actor_net.load_state_dict(torch.load(actor_path))
+        self.critic_net.load_state_dict(torch.load(critic_path))
+
 
 
 # actor_lr = 1e-3

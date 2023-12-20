@@ -1,7 +1,10 @@
-import torch.nn as nn
+import torch
 import torch.nn.functional as F
-from rl_agents.rl_utils import *
+import torch.nn as nn
+import numpy as np
+from torch.distributions import Beta
 
+from rl_agents.rl_utils import *
 
 class PolicyNet(nn.Module):
     def __init__(self, input_channels, hidden_dim, action_dim):
